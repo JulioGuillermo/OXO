@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rec View</title>
+    <script src="jquery-3.6.0.min.js"></script>
+    <script src="chart.js"></script>
+</head>
+
+<body>
+    <div>
+        <canvas id="chart"></canvas>
+    </div>
+    <script>
+        const smooth_scale = 0.1
+            //var file = null
+        var chrt = null
+
+        function change(elements, val, size) {
+            let m = val + size
+            for (let i = 0; i < elements.length; i++) {
+                if (elements[i] >= val && elements[i] < m) return true
+            }
+            return false
+        }
+        /*function load(e) {
+            file = e.target.files[0]
+            document.getElementById("json_input").value = null
+            process()
+        }
+
+        function process() {
+            if (file == null) {
+                return
+            }
+            var reader = new FileReader()
+            reader.addEventListener("load", (e) => {
+                var result = e.target.result
+                processResult(result)
+            })
+            reader.readAsText(file)
+        }*/
+
+        function ajaxData() {
+            $.ajax({
+                url: "/data",
+                success: (e) => {
+                    processResult(e)
+                },
+            })
+        }
+
+        function processResult(res) {
+            var data = JSON.parse(res)
+
+            if (chrt != null) {
+                chrt.destroy()
+            }
+            var smooth = [data.Fitness[0]]
+            for (let i = 1; i < data.Fitness.length; i++) {
+                smooth.push(smooth[i - 1] * (1 - smooth_scale) + data.Fitness[i] * smooth_scale)
+            }
+            var size = -1
+            var first = -1
+            chrt = new Chart(document.getElementById('chart'), {
+                type: 'line',
+                data: {
+                    labels: data.Generations,
+                    datasets: [{
+                        label: "Smooth",
+                        backgroundColor: "#FF5555",
+                        data: smooth,
+                    }, {
+                        label: "Records",
+                        backgroundColor: "#00aaff",
+                        data: data.Fitness,
+                    }, {
+                        label: "Best Wins",
+                        backgroundColor: "#ffaa00",
+                        data: data.BestWins,
+                    }, {
+                        label: "Max Wins",
+                        backgroundColor: "#00FF00",
+                        data: data.Wins,
+                    }, ]
+                },
+                options: {
+                    animation: false,
+                    scales: {
+                        x: {
+                            grid: {
+                                display: true,
+                                drawBorder: true,
+                                color: function(context) {
+                                    if (context.index == 0) {
+                                        first = context.index
+                                    } else if (size == -1) {
+                                        size = context.index - first
+                                    } else if (change(data.Changes, parseInt(context.tick.label), size)) {
+                                        return "#00FFFF"
+                                    }
+                                    return '#DDDDDD';
+                                },
+                            }
+                        },
+                    },
+                }
+
+            })
+        }
+
+        function init() {
+            window.setInterval(ajaxData, 500)
+                //document.getElementById('json_input').addEventListener('change', load, false)
+        }
+        window.addEventListener('load', init, false)
+    </script>
+</body>
+
+</html>
